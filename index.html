@@ -216,9 +216,76 @@ const PASSWORD_HASH=fromCharCodes(H);
 function fromCharCodes(arr){return arr.map(c=>String.fromCharCode(c)).join('')}
 
 async function sha256(text) {
+  if (!window.crypto || !crypto.subtle) {
+    return sha256Fallback(text);
+  }
   const enc = new TextEncoder().encode(text);
   const buf = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function sha256Fallback(text) {
+  const bytes = new TextEncoder().encode(text);
+  const bitLength = bytes.length * 8;
+  const paddedLength = Math.ceil((bytes.length + 9) / 64) * 64;
+  const padded = new Uint8Array(paddedLength);
+  padded.set(bytes);
+  padded[bytes.length] = 0x80;
+
+  const view = new DataView(padded.buffer);
+  view.setUint32(paddedLength - 4, bitLength);
+
+  const constants = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ];
+  const hash = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const words = new Array(64);
+  const rotateRight = (value, count) => (value >>> count) | (value << (32 - count));
+
+  for (let offset = 0; offset < padded.length; offset += 64) {
+    for (let i = 0; i < 16; i++) words[i] = view.getUint32(offset + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotateRight(words[i - 15], 7) ^ rotateRight(words[i - 15], 18) ^ (words[i - 15] >>> 3);
+      const s1 = rotateRight(words[i - 2], 17) ^ rotateRight(words[i - 2], 19) ^ (words[i - 2] >>> 10);
+      words[i] = (words[i - 16] + s0 + words[i - 7] + s1) >>> 0;
+    }
+
+    let [a,b,c,d,e,f,g,h] = hash;
+    for (let i = 0; i < 64; i++) {
+      const s1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + s1 + ch + constants[i] + words[i]) >>> 0;
+      const s0 = rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (s0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + temp1) >>> 0;
+      d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+    }
+
+    hash[0] = (hash[0] + a) >>> 0;
+    hash[1] = (hash[1] + b) >>> 0;
+    hash[2] = (hash[2] + c) >>> 0;
+    hash[3] = (hash[3] + d) >>> 0;
+    hash[4] = (hash[4] + e) >>> 0;
+    hash[5] = (hash[5] + f) >>> 0;
+    hash[6] = (hash[6] + g) >>> 0;
+    hash[7] = (hash[7] + h) >>> 0;
+  }
+
+  return hash.map(value => value.toString(16).padStart(8, '0')).join('');
+}
+
+function showPasswordError(message) {
+  const error = document.getElementById('password-error');
+  error.textContent = message;
+  error.style.display = 'block';
 }
 
 let authenticated = sessionStorage.getItem('coupon_auth') === '1';
@@ -230,16 +297,20 @@ function showApp() {
 }
 
 async function checkPassword() {
-  const input = document.getElementById('password-input').value;
-  const hash = await sha256(input);
-  if (hash === PASSWORD_HASH) {
-    sessionStorage.setItem('coupon_auth', '1');
-    authenticated = true;
-    showApp();
-  } else {
-    document.getElementById('password-error').style.display = 'block';
-    document.getElementById('password-input').value = '';
-    document.getElementById('password-input').focus();
+  try {
+    const input = document.getElementById('password-input').value;
+    const hash = await sha256(input);
+    if (hash === PASSWORD_HASH) {
+      sessionStorage.setItem('coupon_auth', '1');
+      authenticated = true;
+      showApp();
+    } else {
+      showPasswordError('비밀번호가 틀렸습니다');
+      document.getElementById('password-input').value = '';
+      document.getElementById('password-input').focus();
+    }
+  } catch (error) {
+    showPasswordError('비밀번호 확인 중 오류가 발생했습니다: ' + error.message);
   }
 }
 
@@ -257,15 +328,24 @@ document.getElementById('password-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') checkPassword();
 });
 
-// 세션 유지 시 바로 앱 표시
-if (authenticated) showApp();
-
 // ══════════════════════════════════════════════════════════
 // Supabase
 // ══════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://yyjmrnuyadwzzkuzntjd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbG...oBao';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabaseClient = null;
+
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  if (!window.supabase) {
+    throw new Error('Supabase 라이브러리를 불러오지 못했습니다. 인터넷 연결 또는 CDN 차단 여부를 확인하세요.');
+  }
+  if (SUPABASE_ANON_KEY.includes('...')) {
+    throw new Error('Supabase ANON_KEY가 실제 값으로 설정되지 않았습니다.');
+  }
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return supabaseClient;
+}
 
 let coupons = [];
 let currentFilter = 'all';
@@ -295,10 +375,20 @@ function getExpiryInfo(dateStr, status) {
 }
 
 async function loadCoupons() {
-  const { data, error } = await supabase
-    .from('coupons')
-    .select('*')
-    .order('created_at', { ascending: false });
+  let data = [];
+  let error = null;
+
+  try {
+    const client = getSupabaseClient();
+    const response = await client
+      .from('coupons')
+      .select('*')
+      .order('created_at', { ascending: false });
+    data = response.data;
+    error = response.error;
+  } catch (caughtError) {
+    error = caughtError;
+  }
 
   if (error) {
     document.getElementById('coupon-grid').innerHTML =
@@ -348,9 +438,16 @@ function renderCoupons() {
 }
 
 async function markUsed(id) {
-  const { error } = await supabase.from('coupons').update({ status: 'used', used_at: new Date().toISOString() }).eq('id', id);
-  if (error) { alert('처리 실패: ' + error.message); return; }
-  loadCoupons();
+  try {
+    const { error } = await getSupabaseClient()
+      .from('coupons')
+      .update({ status: 'used', used_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) { alert('처리 실패: ' + error.message); return; }
+    loadCoupons();
+  } catch (error) {
+    alert('처리 실패: ' + error.message);
+  }
 }
 
 document.getElementById('filter-bar').addEventListener('click', e => {
@@ -360,6 +457,9 @@ document.getElementById('filter-bar').addEventListener('click', e => {
   currentFilter = e.target.dataset.filter;
   renderCoupons();
 });
+
+// 세션 유지 시 바로 앱 표시
+if (authenticated) showApp();
 </script>
 </body>
 </html>
