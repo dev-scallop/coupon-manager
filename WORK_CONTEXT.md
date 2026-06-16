@@ -33,7 +33,9 @@
 - 수정: 내부 변수명을 `supabaseClient`로 바꾸고, Supabase 로딩/설정 오류를 화면에 표시하도록 처리했다.
 - 보강: `crypto.subtle`이 없는 브라우저에서도 비밀번호 해시를 계산할 수 있도록 SHA-256 예비 함수를 추가했다.
 - 검증: 브라우저에서 로그인 화면과 버튼 동작 확인, Node로 해시 함수 표준값과 로그인 성공 흐름 확인.
+- 추가 수정: `SUPABASE_ANON_KEY`를 실제 anon public 키로 교체했다.
+- 검증: Supabase REST API `coupons?select=*&limit=1` 조회가 `200 OK`로 성공했다.
 
 ## 다음에 이어서 할 때 먼저 볼 것
-- `index.html`의 `SUPABASE_ANON_KEY`가 현재 placeholder(`eyJhbG...oBao`)라 실제 Supabase 데이터 조회에는 전체 anon key가 필요하다.
+- Supabase 데이터 조회 문제가 다시 생기면 먼저 `index.html`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, RLS 정책, `coupons` 테이블 존재 여부를 확인한다.
 - 로그인 문제가 다시 생기면 브라우저 콘솔에서 `Identifier 'supabase' has already been declared`가 다시 나오는지 먼저 확인한다.
