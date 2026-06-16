@@ -198,6 +198,143 @@
     background: #ff3b30; color: white;
   }
 
+  /* ==================== 편집 모달 ==================== */
+  .edit-modal { background: rgba(0,0,0,0.5); align-items: center; }
+  .edit-modal-content {
+    background: white;
+    width: 92%;
+    max-width: 480px;
+    max-height: 90vh;
+    border-radius: 20px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    cursor: auto;
+  }
+  .edit-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid #f0f0f3;
+  }
+  .edit-modal-header h3 { font-size: 17px; font-weight: 700; }
+  .edit-close { position: static; background: #f5f5f7; color: #515154; }
+  .edit-close:hover { background: #e8e8ed; }
+  .edit-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .edit-image-section { display: flex; flex-direction: column; gap: 8px; }
+  .edit-image-label, .edit-field > label {
+    font-size: 12px; font-weight: 600; color: #515154;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .edit-image-wrap {
+    width: 100%;
+    height: 180px;
+    background: #f5f5f7;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .edit-image-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .edit-image-placeholder { color: #86868b; font-size: 14px; }
+  .edit-image-actions { display: flex; gap: 8px; }
+  .edit-image-hint { font-size: 12px; color: #ff9500; }
+  .edit-field { display: flex; flex-direction: column; gap: 6px; }
+  .edit-field input,
+  .edit-field select,
+  .edit-field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d2d2d7;
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    background: white;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .edit-field input:focus,
+  .edit-field select:focus,
+  .edit-field textarea:focus { border-color: #0071e3; }
+  .edit-field textarea { resize: vertical; min-height: 60px; }
+  .edit-field .btn-link {
+    align-self: flex-start;
+    background: none; border: none; padding: 0;
+    color: #0071e3; font-size: 12px; cursor: pointer;
+  }
+  .edit-modal-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f3;
+    background: #fafafa;
+  }
+  .footer-right { display: flex; gap: 8px; }
+
+  /* ─── 공용 버튼 ─── */
+  .btn-primary, .btn-secondary, .btn-danger, .btn-file {
+    border: none; border-radius: 10px;
+    padding: 10px 16px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s, background 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary { background: #0071e3; color: white; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { background: #aac8eb; cursor: not-allowed; }
+  .btn-secondary { background: #e8e8ed; color: #1d1d1f; }
+  .btn-secondary:hover { background: #dcdce0; }
+  .btn-danger { background: #ff3b30; color: white; }
+  .btn-danger:hover { opacity: 0.9; }
+  .btn-file { display: inline-block; }
+
+  /* ==================== 인라인 편집 ==================== */
+  .coupon-card.editing { box-shadow: 0 0 0 2px #0071e3, 0 4px 16px rgba(0,113,227,0.18); }
+  .coupon-card .inline-field {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #d2d2d7;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    background: #fafbfc;
+  }
+  .coupon-card .inline-field:focus { border-color: #0071e3; background: white; }
+  .coupon-card .inline-field.product { font-size: 16px; font-weight: 600; }
+  .coupon-card .inline-field.discount { font-size: 18px; font-weight: 700; color: #0071e3; }
+  .coupon-card .inline-field.expiration { font-size: 13px; }
+  .coupon-card .inline-edit-actions {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .coupon-card .inline-edit-actions button {
+    flex: 1; padding: 7px 0; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+  }
+  .coupon-card .inline-save { background: #0071e3; color: white; }
+  .coupon-card .inline-cancel { background: #e8e8ed; color: #515154; }
+  .coupon-card .card-menu {
+    position: absolute; top: 12px; left: 12px;
+    display: flex; gap: 4px; z-index: 2;
+  }
+  .coupon-card .card-menu button {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 50%;
+    font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #515154; transition: background 0.15s;
+  }
+  .coupon-card .card-menu button:hover { background: white; color: #0071e3; }
+
+  @media (max-width: 640px) {
+    .edit-modal-content { width: 100%; max-height: 95vh; border-radius: 16px 16px 0 0; align-self: flex-end; }
+    .edit-modal { align-items: flex-end; }
+  }
+
   @media (max-width: 640px) {
     body { padding: 12px; }
     .coupon-grid { grid-template-columns: 1fr; }
@@ -247,6 +384,75 @@
   <button class="modal-close" onclick="event.stopPropagation(); closeImageModal()">✕</button>
   <img id="modal-image" src="" alt="전체화면">
 </div>
+
+<!-- ==================== 편집 모달 ==================== -->
+<div class="modal-overlay edit-modal" id="edit-modal" onclick="if(event.target===this) closeEditModal()">
+  <div class="edit-modal-content" onclick="event.stopPropagation()">
+    <div class="edit-modal-header">
+      <h3>쿠폰 편집</h3>
+      <button class="modal-close edit-close" onclick="closeEditModal()">✕</button>
+    </div>
+
+    <div class="edit-modal-body">
+      <div class="edit-image-section">
+        <label class="edit-image-label">이미지</label>
+        <div class="edit-image-wrap">
+          <img id="edit-image-preview" src="" alt="미리보기" style="display:none">
+          <div class="edit-image-placeholder" id="edit-image-placeholder">📷 이미지 없음</div>
+        </div>
+        <div class="edit-image-actions">
+          <label class="btn-secondary btn-file">
+            <input type="file" id="edit-image-input" accept="image/*" hidden>
+            이미지 변경
+          </label>
+          <button type="button" class="btn-secondary" id="edit-image-clear" onclick="clearEditImage()">제거</button>
+        </div>
+        <div class="edit-image-hint" id="edit-image-hint" style="display:none"></div>
+      </div>
+
+      <div class="edit-field">
+        <label for="edit-product-name">제품명</label>
+        <input type="text" id="edit-product-name" maxlength="200">
+      </div>
+
+      <div class="edit-field">
+        <label for="edit-discount">할인 내용</label>
+        <input type="text" id="edit-discount" maxlength="100" placeholder="예: 30% 할인, 3000원 할인, 1+1">
+      </div>
+
+      <div class="edit-field">
+        <label for="edit-expiration">유효기간</label>
+        <input type="date" id="edit-expiration">
+        <button type="button" class="btn-link" id="edit-expiration-clear">기한 없음</button>
+      </div>
+
+      <div class="edit-field">
+        <label for="edit-status">상태</label>
+        <select id="edit-status">
+          <option value="active">사용 가능</option>
+          <option value="used">사용 완료</option>
+          <option value="expired">만료</option>
+        </select>
+      </div>
+
+      <div class="edit-field">
+        <label for="edit-notes">메모</label>
+        <textarea id="edit-notes" rows="3" maxlength="500" placeholder="브랜드, 매장, 사용 조건 등"></textarea>
+      </div>
+    </div>
+
+    <div class="edit-modal-footer">
+      <button type="button" class="btn-danger" id="edit-delete-btn" onclick="deleteCurrentEditing()">삭제</button>
+      <div class="footer-right">
+        <button type="button" class="btn-secondary" onclick="closeEditModal()">취소</button>
+        <button type="button" class="btn-primary" id="edit-save-btn" onclick="saveEdit()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 인라인 편집 컨테이너 (JS 주입) ==================== -->
+<div id="inline-edit-host"></div>
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -466,14 +672,18 @@ function renderCoupons() {
     }
     const actionBtn = c.status === 'active'
       ? `<button class="btn-use" onclick="markUsed('${c.id}')">사용 완료</button>`
-      : `<button class="btn-used" onclick="event.stopPropagation()">${statusLabel}</button>
-         <button class="btn-delete" onclick="deleteCoupon('${c.id}')">삭제</button>`;
-    return `<div class="coupon-card">
+      : `<button class="btn-used" onclick="event.stopPropagation()">${statusLabel}</button>`;
+    const menu = `<div class="card-menu" onclick="event.stopPropagation()">
+      <button title="빠른 편집" onclick="startInlineEdit('${c.id}')">✏️</button>
+      <button title="상세 편집" onclick="openEditModal('${c.id}')">⋯</button>
+    </div>`;
+    return `<div class="coupon-card" id="card-${c.id}" data-id="${c.id}">
       <span class="badge ${badgeClass}">${statusLabel}</span>
+      ${menu}
       ${imgHtml}
-      <div class="product-name">${c.product_name}</div>
-      <div class="discount">${c.discount_amount || ''}</div>
-      <div class="meta">${c.expiration_date ? '~ ' + formatDate(c.expiration_date) : '기한 없음'} ${expInfo ? ' · ' + expInfo : ''}</div>
+      <div class="product-name" data-field="product_name">${c.product_name}</div>
+      <div class="discount" data-field="discount_amount">${c.discount_amount || ''}</div>
+      <div class="meta" data-field="meta">${c.expiration_date ? '~ ' + formatDate(c.expiration_date) : '기한 없음'} ${expInfo ? ' · ' + expInfo : ''}</div>
       <div class="actions">${actionBtn}</div>
     </div>`;
   }).join('');
@@ -532,6 +742,302 @@ document.getElementById('filter-bar').addEventListener('click', e => {
   e.target.classList.add('active');
   currentFilter = e.target.dataset.filter;
   renderCoupons();
+});
+
+// ══════════════════════════════════════════════════════════
+// 쿠폰 편집 (인라인 + 모달)
+// ══════════════════════════════════════════════════════════
+const editingInlineId = { value: null };
+const editingModal = { id: null, original: null, imageCleared: false, newImageFile: null };
+
+function findCoupon(id) {
+  return coupons.find(c => c.id === id) || null;
+}
+
+function sanitize(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// ─── 인라인 빠른 수정 ───
+function startInlineEdit(id) {
+  cancelInlineEdit();
+  const coupon = findCoupon(id);
+  if (!coupon) return;
+  const card = document.getElementById('card-' + id);
+  if (!card) return;
+  editingInlineId.value = id;
+  card.classList.add('editing');
+
+  const productEl = card.querySelector('[data-field="product_name"]');
+  const discountEl = card.querySelector('[data-field="discount_amount"]');
+  const metaEl = card.querySelector('[data-field="meta"]');
+
+  productEl.innerHTML = `<input class="inline-field product" id="inline-product" value="${sanitize(coupon.product_name)}">`;
+  discountEl.innerHTML = `<input class="inline-field discount" id="inline-discount" value="${sanitize(coupon.discount_amount || '')}" placeholder="할인 내용">`;
+  metaEl.innerHTML = `<input class="inline-field expiration" id="inline-expiration" type="date" value="${coupon.expiration_date || ''}">`;
+
+  const actions = card.querySelector('.actions');
+  if (actions) {
+    actions.innerHTML = `
+      <div class="inline-edit-actions">
+        <button class="inline-cancel" onclick="cancelInlineEdit()">취소</button>
+        <button class="inline-save" onclick="saveInlineEdit('${id}')">저장</button>
+      </div>`;
+  }
+
+  const productInput = document.getElementById('inline-product');
+  if (productInput) productInput.focus();
+}
+
+function cancelInlineEdit() {
+  if (!editingInlineId.value) return;
+  const id = editingInlineId.value;
+  editingInlineId.value = null;
+  loadCoupons();
+}
+
+async function saveInlineEdit(id) {
+  const product = document.getElementById('inline-product')?.value.trim();
+  const discount = document.getElementById('inline-discount')?.value.trim();
+  const expiration = document.getElementById('inline-expiration')?.value || null;
+  if (!product) { alert('제품명은 필수입니다'); return; }
+
+  const before = findCoupon(id);
+  if (!before) return;
+
+  const patch = {
+    product_name: product,
+    discount_amount: discount || null,
+    expiration_date: expiration || null
+  };
+
+  try {
+    const { error } = await getSupabaseClient()
+      .from('coupons')
+      .update(patch)
+      .eq('id', id);
+    if (error) { alert('저장 실패: ' + error.message); return; }
+    await logEdit(id, before, patch);
+    editingInlineId.value = null;
+    loadCoupons();
+  } catch (e) {
+    alert('저장 실패: ' + e.message);
+  }
+}
+
+// ─── 상세 편집 모달 ───
+function openEditModal(id) {
+  const coupon = findCoupon(id);
+  if (!coupon) return;
+  editingModal.id = id;
+  editingModal.original = { ...coupon };
+  editingModal.imageCleared = false;
+  editingModal.newImageFile = null;
+
+  document.getElementById('edit-product-name').value = coupon.product_name || '';
+  document.getElementById('edit-discount').value = coupon.discount_amount || '';
+  document.getElementById('edit-expiration').value = coupon.expiration_date || '';
+  document.getElementById('edit-status').value = coupon.status || 'active';
+  document.getElementById('edit-notes').value = coupon.notes || '';
+
+  const preview = document.getElementById('edit-image-preview');
+  const placeholder = document.getElementById('edit-image-placeholder');
+  if (coupon.image_url) {
+    preview.src = coupon.image_url.startsWith('http')
+      ? coupon.image_url
+      : `${SUPABASE_URL}/storage/v1/object/public/coupon_images/${coupon.image_url}`;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
+  hideEditHint();
+
+  document.getElementById('edit-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('edit-product-name').focus();
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  document.body.style.overflow = '';
+  editingModal.id = null;
+  editingModal.original = null;
+  editingModal.imageCleared = false;
+  editingModal.newImageFile = null;
+  document.getElementById('edit-image-input').value = '';
+  if (editingPreviewUrl) {
+    URL.revokeObjectURL(editingPreviewUrl);
+    editingPreviewUrl = null;
+  }
+  hideEditHint();
+}
+
+function showEditHint(msg) {
+  const hint = document.getElementById('edit-image-hint');
+  hint.textContent = msg;
+  hint.style.display = 'block';
+}
+function hideEditHint() {
+  document.getElementById('edit-image-hint').style.display = 'none';
+}
+
+let editingPreviewUrl = null;
+document.getElementById('edit-image-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    showEditHint('이미지는 10MB 이하만 가능합니다.');
+    e.target.value = '';
+    return;
+  }
+  editingModal.newImageFile = file;
+  editingModal.imageCleared = false;
+  const preview = document.getElementById('edit-image-preview');
+  const placeholder = document.getElementById('edit-image-placeholder');
+  if (editingPreviewUrl) URL.revokeObjectURL(editingPreviewUrl);
+  editingPreviewUrl = URL.createObjectURL(file);
+  preview.src = editingPreviewUrl;
+  preview.style.display = 'block';
+  placeholder.style.display = 'none';
+  hideEditHint();
+});
+
+document.getElementById('edit-expiration-clear').addEventListener('click', () => {
+  document.getElementById('edit-expiration').value = '';
+});
+
+function clearEditImage() {
+  editingModal.newImageFile = null;
+  editingModal.imageCleared = true;
+  document.getElementById('edit-image-input').value = '';
+  const preview = document.getElementById('edit-image-preview');
+  preview.removeAttribute('src');
+  preview.style.display = 'none';
+  document.getElementById('edit-image-placeholder').style.display = 'flex';
+  hideEditHint();
+}
+
+async function uploadEditImage(file) {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const path = `coupons/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const url = `${SUPABASE_URL}/storage/v1/object/coupon_images/${path}`;
+  const { data: { session } } = await getSupabaseClient().auth.getSession();
+  const token = session?.access_token || SUPABASE_ANON_KEY;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': file.type || 'image/jpeg',
+      'x-upsert': 'true'
+    },
+    body: file
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Storage 업로드 실패: ${res.status} ${t.slice(0, 200)}`);
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/coupon_images/${path}`;
+}
+
+async function saveEdit() {
+  const id = editingModal.id;
+  if (!id) return;
+  const before = editingModal.original;
+  if (!before) return;
+
+  const product = document.getElementById('edit-product-name').value.trim();
+  if (!product) { alert('제품명은 필수입니다'); return; }
+
+  const saveBtn = document.getElementById('edit-save-btn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '저장 중...';
+
+  try {
+    const patch = {
+      product_name: product,
+      discount_amount: document.getElementById('edit-discount').value.trim() || null,
+      expiration_date: document.getElementById('edit-expiration').value || null,
+      status: document.getElementById('edit-status').value,
+      notes: document.getElementById('edit-notes').value.trim() || null
+    };
+
+    if (editingModal.newImageFile) {
+      patch.image_url = await uploadEditImage(editingModal.newImageFile);
+    } else if (editingModal.imageCleared) {
+      patch.image_url = null;
+    }
+
+    if (patch.status === 'used' && before.status !== 'used') {
+      patch.used_at = new Date().toISOString();
+    }
+
+    const { error } = await getSupabaseClient()
+      .from('coupons')
+      .update(patch)
+      .eq('id', id);
+    if (error) throw error;
+
+    await logEdit(id, before, patch);
+    closeEditModal();
+    loadCoupons();
+  } catch (e) {
+    alert('저장 실패: ' + e.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '저장';
+  }
+}
+
+async function deleteCurrentEditing() {
+  const id = editingModal.id;
+  if (!id) return;
+  if (!confirm('이 쿠폰을 정말 삭제하시겠습니까? (되돌릴 수 없습니다)')) return;
+  try {
+    const { error } = await getSupabaseClient()
+      .from('coupons')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    closeEditModal();
+    loadCoupons();
+  } catch (e) {
+    alert('삭제 실패: ' + e.message);
+  }
+}
+
+// ─── 편집 로그 (실패해도 메인 작업에 영향 없게 best-effort) ───
+async function logEdit(couponId, before, patch) {
+  try {
+    const changes = {};
+    for (const k of Object.keys(patch)) {
+      const b = before?.[k] ?? null;
+      const a = patch[k] ?? null;
+      if (b !== a) changes[k] = { before: b, after: a };
+    }
+    if (Object.keys(changes).length === 0) return;
+    await getSupabaseClient().from('edit_log').insert({
+      coupon_id: couponId,
+      changes
+    });
+  } catch (e) {
+    console.warn('편집 로그 기록 실패 (무시):', e.message);
+  }
+}
+
+// ESC로 인라인/모달 편집 닫기
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('edit-modal').classList.contains('open')) {
+    closeEditModal();
+  } else if (editingInlineId.value) {
+    cancelInlineEdit();
+  }
 });
 
 // 세션 유지 시 바로 앱 표시

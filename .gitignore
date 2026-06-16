@@ -1,0 +1,7 @@
+# 로컬 실행 산출물
+.processed_files.json
+
+# 환경 변수 / 비밀
+.env
+.env.local
+*.local

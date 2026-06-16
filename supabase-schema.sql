@@ -39,3 +39,23 @@ CREATE POLICY "Allow public read coupon_images" ON storage.objects
 CREATE POLICY "Allow public insert coupon_images" ON storage.objects
   FOR INSERT
   WITH CHECK (bucket_id = 'coupon_images');
+
+-- ═══════════════════════════════════════════════════════════════
+-- 6. edit_log 테이블 (쿠폰 편집 이력)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS public.edit_log (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  coupon_id uuid REFERENCES public.coupons(id) ON DELETE CASCADE,
+  changes jsonb NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_edit_log_coupon_id ON public.edit_log(coupon_id);
+CREATE INDEX IF NOT EXISTS idx_edit_log_created_at ON public.edit_log(created_at DESC);
+
+ALTER TABLE public.edit_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all on edit_log" ON public.edit_log
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
