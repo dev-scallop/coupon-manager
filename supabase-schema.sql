@@ -4,6 +4,11 @@
 -- Supabase Dashboard > SQL Editor 에서 아래 SQL을 실행하세요
 -- ═══════════════════════════════════════════════════════════════
 
+-- ⚠️ 이미 coupons 테이블이 있다면 (1)은 CREATE IF NOT EXISTS라 무시되므로,
+--    별도로 다음 한 줄을 먼저 실행해 category 컬럼만 추가하세요:
+--    ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS category text;
+--    CREATE INDEX IF NOT EXISTS idx_coupons_category ON public.coupons(category);
+
 -- 1. coupons 테이블 생성
 CREATE TABLE IF NOT EXISTS public.coupons (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -12,10 +17,15 @@ CREATE TABLE IF NOT EXISTS public.coupons (
   expiration_date date,
   image_url text,
   status text DEFAULT 'active' CHECK (status IN ('active','used','expired')),
+  category text,
   notes text,
   created_at timestamptz DEFAULT now(),
   used_at timestamptz
 );
+
+CREATE INDEX IF NOT EXISTS idx_coupons_category ON public.coupons(category);
+CREATE INDEX IF NOT EXISTS idx_coupons_status ON public.coupons(status);
+CREATE INDEX IF NOT EXISTS idx_coupons_created_at ON public.coupons(created_at DESC);
 
 -- 2. RLS 활성화 (선택 - 필요하면)
 ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;

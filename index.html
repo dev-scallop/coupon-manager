@@ -90,13 +90,23 @@
   }
   .header .logout-btn:hover { border-color: #ff3b30; color: #ff3b30; }
 
-  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+  .filter-bar > .filter-group {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-bar > .filter-group + .filter-group {
+    margin-left: 8px; padding-left: 12px; border-left: 1px solid #d2d2d7;
+  }
+  .filter-bar .filter-label {
+    font-size: 12px; font-weight: 600; color: #86868b;
+    margin-right: 2px; letter-spacing: 0.02em;
+  }
   .filter-bar button {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border: 1px solid #d2d2d7;
-    border-radius: 20px;
+    border-radius: 16px;
     background: white;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
     color: #515154;
@@ -104,9 +114,41 @@
   .filter-bar button:hover { border-color: #0071e3; color: #0071e3; }
   .filter-bar button.active { background: #0071e3; color: white; border-color: #0071e3; }
 
+  /* ==================== 카테고리 칩 ==================== */
+  .category-chip {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #f0e9ff;
+    color: #5e3fc0;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+  }
+  .category-chip[data-cat="식당"] { background: #ffe9e3; color: #c43d1a; }
+  .category-chip[data-cat="카페"] { background: #f5e8d3; color: #8a5a1c; }
+  .category-chip[data-cat="쇼핑"] { background: #e3f0ff; color: #1a5dc4; }
+  .category-chip[data-cat="배달앱"] { background: #e3fce9; color: #1a8a3a; }
+  .category-chip[data-cat="편의점"] { background: #fff4cc; color: #8a6a00; }
+  .category-chip[data-cat="영화/문화"] { background: #f0e0ff; color: #6a1a8a; }
+  .category-chip[data-cat="뷰티/헬스"] { background: #ffe3f0; color: #c41a7a; }
+  .category-chip[data-cat="기타"] { background: #e8e8ed; color: #515154; }
+  .category-chip-inline {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid #d2d2d7;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: inherit;
+    background: #fafbfc;
+    margin-bottom: 6px;
+  }
+  .category-chip-inline:focus { border-color: #0071e3; background: white; outline: none; }
+
   .coupon-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 16px;
   }
   .coupon-card {
@@ -265,6 +307,9 @@
     background: none; border: none; padding: 0;
     color: #0071e3; font-size: 12px; cursor: pointer;
   }
+  .edit-category-row { display: flex; gap: 6px; align-items: stretch; }
+  .edit-category-row select { flex: 1; }
+  .btn-small { padding: 8px 12px; font-size: 13px; }
   .edit-modal-footer {
     display: flex; justify-content: space-between; align-items: center;
     padding: 14px 20px;
@@ -366,10 +411,17 @@
   </div>
 
   <div class="filter-bar" id="filter-bar">
-    <button class="active" data-filter="all">전체</button>
-    <button data-filter="active">사용 가능</button>
-    <button data-filter="used">사용 완료</button>
-    <button data-filter="expired">만료</button>
+    <div class="filter-group" data-group="status">
+      <button class="active" data-filter="all" data-value="all">전체</button>
+      <button data-filter="status" data-value="active">사용 가능</button>
+      <button data-filter="status" data-value="used">사용 완료</button>
+      <button data-filter="status" data-value="expired">만료</button>
+    </div>
+    <div class="filter-group" data-group="category" id="category-filter-group">
+      <span class="filter-label">카테고리</span>
+      <button class="active" data-filter="category" data-value="all">전체</button>
+      <!-- 동적으로 추가됨 -->
+    </div>
   </div>
 
   <div class="coupon-grid" id="coupon-grid"></div>
@@ -424,6 +476,15 @@
         <label for="edit-expiration">유효기간</label>
         <input type="date" id="edit-expiration">
         <button type="button" class="btn-link" id="edit-expiration-clear">기한 없음</button>
+      </div>
+
+      <div class="edit-field">
+        <label for="edit-category-select">카테고리</label>
+        <div class="edit-category-row">
+          <select id="edit-category-select"></select>
+          <button type="button" class="btn-secondary btn-small" id="edit-category-clear">해제</button>
+        </div>
+        <input type="text" id="edit-category-custom" placeholder="새 카테고리 이름" style="display:none">
       </div>
 
       <div class="edit-field">
@@ -595,7 +656,48 @@ function getSupabaseClient() {
 }
 
 let coupons = [];
-let currentFilter = 'all';
+let currentFilters = { status: 'all', category: 'all' };
+
+// 기본 카테고리 (자유롭게 추가 가능)
+const DEFAULT_CATEGORIES = ['식당', '카페', '쇼핑', '배달앱', '편의점', '영화/문화', '뷰티/헬스', '기타'];
+const CUSTOM_CATEGORY_KEY = 'coupon_custom_categories';
+
+function getCustomCategories() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_CATEGORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveCustomCategories(list) {
+  try {
+    localStorage.setItem(CUSTOM_CATEGORY_KEY, JSON.stringify(list));
+  } catch {}
+}
+
+function addCustomCategory(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return null;
+  const all = [...DEFAULT_CATEGORIES, ...getCustomCategories()];
+  if (all.includes(trimmed)) return trimmed;
+  const custom = getCustomCategories();
+  custom.push(trimmed);
+  saveCustomCategories(custom);
+  return trimmed;
+}
+
+function getAllCategories() {
+  // 사용자가 실제로 등록한 카테고리도 포함
+  const fromData = coupons
+    .map(c => c.category)
+    .filter(Boolean);
+  const custom = getCustomCategories();
+  const merged = [...DEFAULT_CATEGORIES];
+  for (const c of [...custom, ...fromData]) {
+    if (!merged.includes(c)) merged.push(c);
+  }
+  return merged;
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -644,6 +746,7 @@ async function loadCoupons() {
   }
   coupons = data || [];
   document.getElementById('total-count').textContent = coupons.length;
+  renderCategoryFilters();
   renderCoupons();
 }
 
@@ -651,7 +754,12 @@ function renderCoupons() {
   const grid = document.getElementById('coupon-grid');
   const empty = document.getElementById('empty-state');
   let filtered = coupons;
-  if (currentFilter !== 'all') filtered = coupons.filter(c => c.status === currentFilter);
+  if (currentFilters.status !== 'all') {
+    filtered = filtered.filter(c => c.status === currentFilters.status);
+  }
+  if (currentFilters.category !== 'all') {
+    filtered = filtered.filter(c => c.category === currentFilters.category);
+  }
 
   if (filtered.length === 0) {
     grid.innerHTML = '';
@@ -668,7 +776,7 @@ function renderCoupons() {
     if (c.image_url) {
       const imgUrl = c.image_url.startsWith('http') ? c.image_url
         : `${SUPABASE_URL}/storage/v1/object/public/coupon_images/${c.image_url}`;
-      imgHtml = `<img class="thumb" src="${imgUrl}" alt="${c.product_name}" loading="lazy" onclick="openImageModal('${imgUrl}')" style="cursor:pointer">`;
+      imgHtml = `<img class="thumb" src="${imgUrl}" alt="${sanitize(c.product_name)}" loading="lazy" onclick="openImageModal('${imgUrl}')" style="cursor:pointer">`;
     }
     const actionBtn = c.status === 'active'
       ? `<button class="btn-use" onclick="markUsed('${c.id}')">사용 완료</button>`
@@ -677,12 +785,16 @@ function renderCoupons() {
       <button title="빠른 편집" onclick="startInlineEdit('${c.id}')">✏️</button>
       <button title="상세 편집" onclick="openEditModal('${c.id}')">⋯</button>
     </div>`;
+    const categoryChip = c.category
+      ? `<span class="category-chip" data-cat="${sanitize(c.category)}">${sanitize(c.category)}</span>`
+      : '';
     return `<div class="coupon-card" id="card-${c.id}" data-id="${c.id}">
       <span class="badge ${badgeClass}">${statusLabel}</span>
       ${menu}
       ${imgHtml}
-      <div class="product-name" data-field="product_name">${c.product_name}</div>
-      <div class="discount" data-field="discount_amount">${c.discount_amount || ''}</div>
+      ${categoryChip}
+      <div class="product-name" data-field="product_name">${sanitize(c.product_name)}</div>
+      <div class="discount" data-field="discount_amount">${sanitize(c.discount_amount || '')}</div>
       <div class="meta" data-field="meta">${c.expiration_date ? '~ ' + formatDate(c.expiration_date) : '기한 없음'} ${expInfo ? ' · ' + expInfo : ''}</div>
       <div class="actions">${actionBtn}</div>
     </div>`;
@@ -738,11 +850,40 @@ async function deleteCoupon(id) {
 
 document.getElementById('filter-bar').addEventListener('click', e => {
   if (e.target.tagName !== 'BUTTON') return;
-  document.querySelectorAll('#filter-bar button').forEach(b => b.classList.remove('active'));
-  e.target.classList.add('active');
-  currentFilter = e.target.dataset.filter;
+  const filter = e.target.dataset.filter;     // 'status' | 'category'
+  const value = e.target.dataset.value;       // 'all' | 'active' | '식당' | ...
+  if (!filter || value === undefined) return;
+
+  // 'all' 클릭 시: 그 그룹만 all 로, 다른 그룹은 영향 없음
+  if (value === 'all') {
+    currentFilters[filter] = 'all';
+  } else {
+    currentFilters[filter] = value;
+  }
+  renderCategoryFilters();
   renderCoupons();
 });
+
+function renderCategoryFilters() {
+  const group = document.getElementById('category-filter-group');
+  if (!group) return;
+  // 기존 동적 버튼 제거 ('전체'와 label은 유지)
+  Array.from(group.querySelectorAll('button[data-filter="category"]')).forEach(b => {
+    if (b.dataset.value !== 'all') b.remove();
+  });
+  const allBtn = group.querySelector('button[data-value="all"]');
+  if (allBtn) allBtn.classList.toggle('active', currentFilters.category === 'all');
+
+  const cats = getAllCategories();
+  for (const cat of cats) {
+    const btn = document.createElement('button');
+    btn.dataset.filter = 'category';
+    btn.dataset.value = cat;
+    btn.textContent = cat;
+    if (currentFilters.category === cat) btn.classList.add('active');
+    group.appendChild(btn);
+  }
+}
 
 // ══════════════════════════════════════════════════════════
 // 쿠폰 편집 (인라인 + 모달)
@@ -777,6 +918,28 @@ function startInlineEdit(id) {
   productEl.innerHTML = `<input class="inline-field product" id="inline-product" value="${sanitize(coupon.product_name)}">`;
   discountEl.innerHTML = `<input class="inline-field discount" id="inline-discount" value="${sanitize(coupon.discount_amount || '')}" placeholder="할인 내용">`;
   metaEl.innerHTML = `<input class="inline-field expiration" id="inline-expiration" type="date" value="${coupon.expiration_date || ''}">`;
+
+  // 카테고리 칩 자리에 카테고리 변경 안내 추가
+  const chip = card.querySelector('.category-chip');
+  if (chip) {
+    const link = document.createElement('div');
+    link.className = 'category-chip-inline';
+    link.style.textAlign = 'center';
+    link.style.color = '#0071e3';
+    link.style.cursor = 'pointer';
+    link.textContent = `🏷️ ${coupon.category || '카테고리 없음'} (변경)`;
+    link.onclick = () => { cancelInlineEdit(); openEditModal(id); };
+    chip.replaceWith(link);
+  } else {
+    const link = document.createElement('div');
+    link.className = 'category-chip-inline';
+    link.style.textAlign = 'center';
+    link.style.color = '#0071e3';
+    link.style.cursor = 'pointer';
+    link.textContent = '🏷️ 카테고리 추가';
+    link.onclick = () => { cancelInlineEdit(); openEditModal(id); };
+    card.querySelector('img.thumb, .no-thumb')?.after(link);
+  }
 
   const actions = card.querySelector('.actions');
   if (actions) {
@@ -842,6 +1005,25 @@ function openEditModal(id) {
   document.getElementById('edit-status').value = coupon.status || 'active';
   document.getElementById('edit-notes').value = coupon.notes || '';
 
+  // 카테고리 드롭다운 빌드
+  const sel = document.getElementById('edit-category-select');
+  const custom = document.getElementById('edit-category-custom');
+  const cats = getAllCategories();
+  sel.innerHTML = '<option value="">— 없음 —</option>'
+    + cats.map(cat => `<option value="${sanitize(cat)}">${sanitize(cat)}</option>`).join('')
+    + '<option value="__custom__">+ 직접 입력…</option>';
+  if (coupon.category && !cats.includes(coupon.category)) {
+    // 데이터에 있지만 드롭다운에 없는 값 → 직접 입력 모드로 표시
+    const opt = document.createElement('option');
+    opt.value = coupon.category;
+    opt.textContent = coupon.category;
+    sel.insertBefore(opt, sel.querySelector('option[value="__custom__"]'));
+  }
+  sel.value = coupon.category || '';
+  custom.value = '';
+  custom.style.display = 'none';
+
+  // 이미지 미리보기
   const preview = document.getElementById('edit-image-preview');
   const placeholder = document.getElementById('edit-image-placeholder');
   if (coupon.image_url) {
@@ -870,6 +1052,11 @@ function closeEditModal() {
   editingModal.imageCleared = false;
   editingModal.newImageFile = null;
   document.getElementById('edit-image-input').value = '';
+  const custom = document.getElementById('edit-category-custom');
+  if (custom) {
+    custom.value = '';
+    custom.style.display = 'none';
+  }
   if (editingPreviewUrl) {
     URL.revokeObjectURL(editingPreviewUrl);
     editingPreviewUrl = null;
@@ -910,6 +1097,33 @@ document.getElementById('edit-image-input').addEventListener('change', e => {
 document.getElementById('edit-expiration-clear').addEventListener('click', () => {
   document.getElementById('edit-expiration').value = '';
 });
+
+document.getElementById('edit-category-select').addEventListener('change', e => {
+  const custom = document.getElementById('edit-category-custom');
+  if (e.target.value === '__custom__') {
+    custom.style.display = 'block';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+});
+
+document.getElementById('edit-category-clear').addEventListener('click', () => {
+  document.getElementById('edit-category-select').value = '';
+  document.getElementById('edit-category-custom').value = '';
+  document.getElementById('edit-category-custom').style.display = 'none';
+});
+
+function resolveCategory() {
+  const sel = document.getElementById('edit-category-select').value;
+  const custom = document.getElementById('edit-category-custom').value.trim();
+  if (sel === '__custom__') {
+    if (!custom) return null;          // 사용자가 비워두면 변경 안 함
+    return addCustomCategory(custom);
+  }
+  return sel || null;
+}
 
 function clearEditImage() {
   editingModal.newImageFile = null;
@@ -963,6 +1177,7 @@ async function saveEdit() {
       product_name: product,
       discount_amount: document.getElementById('edit-discount').value.trim() || null,
       expiration_date: document.getElementById('edit-expiration').value || null,
+      category: resolveCategory(),
       status: document.getElementById('edit-status').value,
       notes: document.getElementById('edit-notes').value.trim() || null
     };
