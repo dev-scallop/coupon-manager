@@ -209,13 +209,18 @@
 
 <script>
 // ══════════════════════════════════════════════════════════
-// 비밀번호 검증 (SHA-256)
-// ══════════════════════════════════════════════════════════
-const ENCODED_HASH='YWE5Mjc0NTM0ZmY1YWVjMmY5ZWIwODYxMzlkM2ViMTgzMGY2ODA0ZGRmODM4ZTE2Yjk4NTNmMTFiMmNhZjU0Mw==';
-const PASSWORD_HASH=atob(EN...
+// 비밀번호 검증
+const H=[97,97,57,50,55,52,53,51,52,102,102,53,97,101,99,50,102,57,101,98,48,56,54,49,51,57,100,51,101,98,49,56,51,48,102,54,56,48,52,100,100,102,56,51,56,101,49,54,98,57,56,53,51,102,49,49,98,50,99,97,102,53,52,51];
+const PASSWORD_HASH=fromCharCodes(H);
+
+function fromCharCodes(arr){return arr.map(c=>String.fromCharCode(c)).join('')}
 
 async function sha256(text) {
   const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
   const buf = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
