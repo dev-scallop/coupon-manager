@@ -163,6 +163,41 @@
   }
   .empty .icon { font-size: 48px; margin-bottom: 12px; }
 
+  /* ==================== 이미지 전체화면 모달 ==================== */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  .modal-close {
+    position: fixed; top: 20px; right: 20px;
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.15);
+    border: none; border-radius: 50%;
+    color: white; font-size: 20px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.3); }
+
+  .btn-delete {
+    background: #ff3b30; color: white;
+  }
+
   @media (max-width: 640px) {
     body { padding: 12px; }
     .coupon-grid { grid-template-columns: 1fr; }
@@ -205,6 +240,12 @@
     <div class="icon">📭</div>
     <p>쿠폰이 없습니다</p>
   </div>
+</div>
+
+<!-- ==================== 이미지 전체화면 모달 ==================== -->
+<div class="modal-overlay" id="image-modal" onclick="closeImageModal()">
+  <button class="modal-close" onclick="event.stopPropagation(); closeImageModal()">✕</button>
+  <img id="modal-image" src="" alt="전체화면">
 </div>
 
 <script>
@@ -421,11 +462,12 @@ function renderCoupons() {
     if (c.image_url) {
       const imgUrl = c.image_url.startsWith('http') ? c.image_url
         : `${SUPABASE_URL}/storage/v1/object/public/coupon_images/${c.image_url}`;
-      imgHtml = `<img class="thumb" src="${imgUrl}" alt="${c.product_name}" loading="lazy">`;
+      imgHtml = `<img class="thumb" src="${imgUrl}" alt="${c.product_name}" loading="lazy" onclick="openImageModal('${imgUrl}')" style="cursor:pointer">`;
     }
     const actionBtn = c.status === 'active'
       ? `<button class="btn-use" onclick="markUsed('${c.id}')">사용 완료</button>`
-      : `<button class="btn-used">${statusLabel}</button>`;
+      : `<button class="btn-used" onclick="event.stopPropagation()">${statusLabel}</button>
+         <button class="btn-delete" onclick="deleteCoupon('${c.id}')">삭제</button>`;
     return `<div class="coupon-card">
       <span class="badge ${badgeClass}">${statusLabel}</span>
       ${imgHtml}
@@ -447,6 +489,40 @@ async function markUsed(id) {
     loadCoupons();
   } catch (error) {
     alert('처리 실패: ' + error.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// 이미지 전체화면
+// ══════════════════════════════════════════════════════════
+function openImageModal(url) {
+  document.getElementById('modal-image').src = url;
+  document.getElementById('image-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeImageModal() {
+  document.getElementById('image-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeImageModal();
+});
+
+// ══════════════════════════════════════════════════════════
+// 쿠폰 삭제
+// ══════════════════════════════════════════════════════════
+async function deleteCoupon(id) {
+  if (!confirm('정말 삭제하시겠습니까?')) return;
+  try {
+    const { error } = await getSupabaseClient()
+      .from('coupons')
+      .delete()
+      .eq('id', id);
+    if (error) { alert('삭제 실패: ' + error.message); return; }
+    loadCoupons();
+  } catch (error) {
+    alert('삭제 실패: ' + error.message);
   }
 }
 
