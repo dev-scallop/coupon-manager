@@ -22,6 +22,7 @@ import urllib.request, urllib.error
 
 # ─── 설정 ───────────────────────────────────────────────
 DRIVE_FOLDER_ID = "1SVCY7UjMOf2KQzxRF-LWxgksGgQ8EE3U"
+DRIVE_DONE_FOLDER_ID = "1d5V76leLNiqOx_xxwhZL29ui08W90zt0"
 GOG_ACCOUNT = "taejin@hanbit.co.kr"
 STATE_FILE = os.path.expanduser(
     "~/Documents/github/coupon-manager/.processed_files.json"
@@ -116,6 +117,23 @@ def drive_download(file_id, filename):
                 return saved_path
 
     return target_path if os.path.exists(target_path) else None
+
+
+def drive_move_to_done(file_id, dry_run=False):
+    """DB INSERT가 성공한 이미지를 done 폴더로 이동"""
+    if not DRIVE_DONE_FOLDER_ID:
+        return True  # done 폴더 미설정 시 동작은 성공으로 간주 (스킵)
+    args = ["drive", "move", file_id,
+            "--account", GOG_ACCOUNT,
+            f"--parent={DRIVE_DONE_FOLDER_ID}"]
+    if dry_run:
+        args.append("--dry-run")
+    result = _run_gog(args, timeout=60)
+    if result.returncode != 0:
+        print(f"  [오류] Drive 이동 실패: {result.stderr.strip()[:200]}")
+        return False
+    print(f"  ✅ Drive done 폴더로 이동 완료")
+    return True
 
 # ─── OpenAI Vision API ──────────────────────────────────
 
@@ -333,7 +351,7 @@ def main():
     print("=" * 50)
 
     # 1. API 키 로드
-    print("\n[1/5] API 키 확인...")
+    print("\n[1/6] API 키 확인...")
     
     # 프로젝트/공용 credential 파일 로드
     load_env_file(os.path.expanduser("~/Documents/github/coupon-manager/upload-coupon.sh"))
@@ -366,7 +384,7 @@ def main():
     print(f"  ✅ Supabase 연결 확인됨")
 
     # 2. Drive 파일 목록 조회
-    print("\n[2/5] Google Drive 폴더 확인...")
+    print("\n[2/6] Google Drive 폴더 확인...")
     files = drive_list_files(DRIVE_FOLDER_ID)
     if not files:
         print("  폴더에 파일이 없습니다.")
@@ -382,7 +400,7 @@ def main():
         return
 
     # 3. 새 파일(아직 처리 안 한) 확인
-    print("\n[3/5] 새 이미지 선별...")
+    print("\n[3/6] 새 이미지 선별...")
     state = load_state()
     processed_ids = set(state.get("processed", []))
     new_files = [f for f in image_files if f.get("id") not in processed_ids]
@@ -410,7 +428,7 @@ def main():
         print(f"  크기: {int(file_info.get('size', 0)) / 1024:.1f} KB")
 
         # 4. 다운로드
-        print("\n[4/5] 이미지 다운로드...")
+        print("\n[4/6] 이미지 다운로드...")
         local_path = drive_download(file_id, filename)
         if not local_path or not os.path.exists(local_path):
             print(f"  [오류] 다운로드 실패, 다음 파일로 넘어갑니다")
@@ -418,7 +436,7 @@ def main():
         print(f"  저장: {local_path}")
 
         # 5. OpenAI Vision API로 쿠폰 정보 추출
-        print("\n[5/5] OCR 분석 (GPT-4o Vision)...")
+        print("\n[5/6] OCR 분석 (GPT-4o Vision)...")
         info = extract_coupon_info(local_path, openai_key)
         if info is None:
             print(f"  [오류] OCR 분석 실패")
@@ -460,13 +478,25 @@ def main():
         result = insert_coupon(coupon_record, svc_key=svc_key, anon_key=anon_key)
         if result:
             print(f"  ✅ 쿠폰 저장 완료! (ID: {result[0]['id'] if isinstance(result, list) else 'ok'})")
-        else:
-            print(f"  [경고] DB 저장 실패")
 
-        # 처리 완료 기록
-        state["processed"].append(file_id)
-        save_state(state)
-        print(f"  📝 처리 상태 저장 완료")
+            # 7-1. 사이트(Supabase) 반영 확인 후 Drive 원본을 done 폴더로 이동
+            print("\n[6/6] Drive done 폴더로 이동...")
+            if not dry_run:
+                moved = drive_move_to_done(file_id, dry_run=False)
+                if not moved:
+                    print(f"  [경고] Drive 이동 실패 — 원본 폴더에 그대로 둡니다 (DB에는 정상 저장됨)")
+            else:
+                # dry-run에서도 흐름 검증만 출력
+                drive_move_to_done(file_id, dry_run=True)
+        else:
+            print(f"  [경고] DB 저장 실패 — done으로 이동하지 않음")
+            # DB 실패 시 처리 상태도 기록하지 않음 → 다음 실행에서 재시도
+
+        # 처리 완료 기록 (DB 성공 시점에만)
+        if result:
+            state["processed"].append(file_id)
+            save_state(state)
+            print(f"  📝 처리 상태 저장 완료")
 
         # API 호출 간격 (rate limit)
         time.sleep(1)
