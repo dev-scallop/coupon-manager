@@ -35,7 +35,10 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 # ─── API 키 로드 ────────────────────────────────────────
 
 def load_env_file(path):
-    """.env 파일에서 KEY=VALUE 형식을 읽어 환경변수로 등록"""
+    """.env 파일에서 KEY=VALUE 형식을 읽어 환경변수로 등록
+
+    따옴표(" 또는 ')로 감싸진 값은 자동으로 벗김 (sh와 동일한 처리).
+    """
     if not os.path.exists(path):
         return
     with open(path) as f:
@@ -44,7 +47,11 @@ def load_env_file(path):
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, val = line.split("=", 1)
-            os.environ.setdefault(key.strip(), val.strip())
+            val = val.strip()
+            # 따옴표 1쌍 제거 (key="value" 또는 key='value' 둘 다)
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                val = val[1:-1]
+            os.environ.setdefault(key.strip(), val)
 
 def normalize_loaded_keys():
     """기존 스크립트의 변수명을 파이프라인 표준 환경변수명으로 맞춤"""
@@ -240,18 +247,19 @@ def extract_coupon_info(image_path, api_key):
 # ─── Supabase ───────────────────────────────────────────
 
 def supabase_request(method, path, data=None, anon_key="", svc_key=""):
-    """Supabase REST API 호출 (service_role 키 우선)"""
+    """Supabase REST API 호출 (service_role 키 우선, 자리표시자/짧은 키는 anon fallback)"""
     url = f"{os.environ.get('SUPABASE_URL', '')}{path}"
     headers = {
         "Content-Type": "application/json",
         "Prefer": "return=representation"
     }
-    if svc_key:
-        headers["apikey"] = svc_key
-        headers["Authorization"] = f"Bearer {svc_key}"
-    else:
-        headers["apikey"] = anon_key
-        headers["Authorization"] = f"Bearer {anon_key}"
+    # 자리표시자(`eyJhbG...`)나 너무 짧은 키는 invalid로 보고 anon 우선
+    api_key = svc_key if _is_valid_supabase_key(svc_key) else anon_key
+    if not _is_valid_supabase_key(api_key):
+        # 둘 다 invalid면 anon을 그대로 사용 (401은 Supabase가 반환)
+        api_key = anon_key or svc_key
+    headers["apikey"] = api_key
+    headers["Authorization"] = f"Bearer {api_key}"
 
     data_bytes = json.dumps(data).encode("utf-8") if data else None
     
@@ -265,11 +273,19 @@ def supabase_request(method, path, data=None, anon_key="", svc_key=""):
         print(f"  [오류] Supabase {method} {path}: {e.code} {err}")
         return None
 
+def _is_valid_supabase_key(k):
+    """Supabase anon/service_role 키가 자리표시자나 빈 값이 아닌지 확인.
+
+    실제 anon/svc JWT는 200자 이상이고, 자리표시자는 보통 16자 이하.
+    """
+    return bool(k) and len(k) >= 100
+
+
 def _pick_storage_key(svc_key, anon_key):
-    """service_role 키 우선, 없으면 anon 키 사용. 둘 다 없으면 None."""
-    if svc_key and len(svc_key) >= 20:
+    """service_role 키 우선, 자리표시자/짧은 키는 anon 키 사용. 둘 다 없으면 None."""
+    if _is_valid_supabase_key(svc_key):
         return svc_key
-    if anon_key and len(anon_key) >= 20:
+    if _is_valid_supabase_key(anon_key):
         return anon_key
     return None
 
@@ -411,7 +427,7 @@ def main():
         print("\n✅ 새로 처리할 이미지가 없습니다.")
         return
 
-    if not (svc_key and len(svc_key) >= 20) and not (anon_key and len(anon_key) >= 20):
+    if not (svc_key and len(svc_key) >= 100) and not (anon_key and len(anon_key) >= 100):
         print("\n[오류] Supabase 저장용 키가 없습니다")
         print("  service_role 키 또는 anon 키가 필요합니다.")
         print("  확인 위치: ~/Documents/github/coupon-manager/upload-coupon.sh")
