@@ -45,8 +45,17 @@ def load_env_file(path):
             key, val = line.split("=", 1)
             os.environ.setdefault(key.strip(), val.strip())
 
+def normalize_loaded_keys():
+    """기존 스크립트의 변수명을 파이프라인 표준 환경변수명으로 맞춤"""
+    if not os.environ.get("SUPABASE_SVC") and os.environ.get("SERVICE_KEY"):
+        os.environ["SUPABASE_SVC"] = os.environ["SERVICE_KEY"]
+    if not os.environ.get("SUPABASE_ANON") and os.environ.get("SUPABASE_ANON_KEY"):
+        os.environ["SUPABASE_ANON"] = os.environ["SUPABASE_ANON_KEY"]
+
+
 def get_supabase_keys():
-    """환경변수에서 Supabase 키 읽기"""
+    """환경변수/프로젝트 스크립트에서 Supabase 키 읽기"""
+    normalize_loaded_keys()
     url = os.environ.get("SUPABASE_URL", "")
     anon = os.environ.get("SUPABASE_ANON", "")
     svc = os.environ.get("SUPABASE_SVC", "")
@@ -58,15 +67,19 @@ def get_openai_key():
 
 # ─── Google Drive ───────────────────────────────────────
 
+def _run_gog(args, timeout=30):
+    """gog CLI 호출 — cron 등 PATH가 비어있는 환경에서도 동작하도록 보강"""
+    env = os.environ.copy()
+    env.setdefault("PATH", "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin")
+    return subprocess.run(["gog", *args], capture_output=True, text=True, timeout=timeout, env=env)
+
+
 def drive_list_files(folder_id):
     """gog CLI로 Drive 폴더 내 파일 목록 조회"""
-    cmd = [
-        "gog", "drive", "ls",
-        "--account", GOG_ACCOUNT,
-        "--parent", folder_id,
-        "-j"
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    result = _run_gog(["drive", "ls",
+                       "--account", GOG_ACCOUNT,
+                       "--parent", folder_id,
+                       "-j"], timeout=30)
     if result.returncode != 0:
         print(f"[오류] Drive 폴더 조회 실패: {result.stderr}")
         return []
@@ -84,27 +97,24 @@ def drive_download(file_id, filename):
         print(f"  이미 다운로드됨: {target_path}")
         return target_path
 
-    cmd = [
-        "gog", "drive", "download",
-        "--account", GOG_ACCOUNT,
-        file_id
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    result = _run_gog(["drive", "download",
+                       "--account", GOG_ACCOUNT,
+                       file_id], timeout=60)
     if result.returncode != 0:
         print(f"  [오류] 다운로드 실패 ({filename}): {result.stderr}")
         return None
-    
+
     # gog가 파일을 저장한 경로 찾기
     if os.path.exists(target_path):
         return target_path
-    
+
     # 경로가 다를 수 있으므로 gog 출력에서 확인
     for line in result.stdout.split("\n"):
         if "path\t" in line:
             saved_path = line.split("\t", 1)[1].strip()
             if os.path.exists(saved_path):
                 return saved_path
-    
+
     return target_path if os.path.exists(target_path) else None
 
 # ─── OpenAI Vision API ──────────────────────────────────
@@ -237,9 +247,25 @@ def supabase_request(method, path, data=None, anon_key="", svc_key=""):
         print(f"  [오류] Supabase {method} {path}: {e.code} {err}")
         return None
 
-def upload_to_storage(file_path, filename, svc_key):
-    """Supabase Storage에 이미지 업로드, public URL 반환"""
-    # gog가 다운로드한 파일명이 복잡할 수 있으니 간단한 이름으로 저장
+def _pick_storage_key(svc_key, anon_key):
+    """service_role 키 우선, 없으면 anon 키 사용. 둘 다 없으면 None."""
+    if svc_key and len(svc_key) >= 20:
+        return svc_key
+    if anon_key and len(anon_key) >= 20:
+        return anon_key
+    return None
+
+
+def upload_to_storage(file_path, filename, svc_key="", anon_key=""):
+    """Supabase Storage에 이미지 업로드, public URL 반환
+
+    키 우선순위: service_role → anon (anon은 storage INSERT 정책이 있으면 가능)
+    """
+    api_key = _pick_storage_key(svc_key, anon_key)
+    if not api_key:
+        print("  [오류] 업로드용 Supabase 키가 없습니다 (svc/anon 모두 없음)")
+        return None
+
     upload_name = f"coupons/{int(time.time())}_{filename}"
     storage_url = (
         f"{os.environ.get('SUPABASE_URL', '')}"
@@ -250,17 +276,16 @@ def upload_to_storage(file_path, filename, svc_key):
         file_bytes = f.read()
 
     headers = {
-        "Authorization": f"Bearer {svc_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "image/jpeg"
     }
-    
+
     req = urllib.request.Request(
         storage_url, data=file_bytes, headers=headers, method="POST"
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             print(f"  이미지 업로드 성공")
-            # public URL 반환
             return (f"{os.environ.get('SUPABASE_URL', '')}"
                     f"/storage/v1/object/public/coupon_images/{upload_name}")
     except urllib.error.HTTPError as e:
@@ -268,14 +293,15 @@ def upload_to_storage(file_path, filename, svc_key):
         print(f"  [오류] Storage 업로드 실패: {e.code} {err}")
         return None
 
-def insert_coupon(coupon_data, svc_key):
-    """Supabase coupons 테이블에 레코드 삽입"""
-    result = supabase_request(
+
+def insert_coupon(coupon_data, svc_key="", anon_key=""):
+    """Supabase coupons 테이블에 레코드 삽입 (anon 키 fallback 지원)"""
+    return supabase_request(
         "POST", "/rest/v1/coupons",
         data=coupon_data,
+        anon_key=anon_key,
         svc_key=svc_key
     )
-    return result
 
 # ─── 처리 상태 관리 ─────────────────────────────────────
 
@@ -309,11 +335,25 @@ def main():
     # 1. API 키 로드
     print("\n[1/5] API 키 확인...")
     
-    # lecturenote .env 로드
+    # 프로젝트/공용 credential 파일 로드
+    load_env_file(os.path.expanduser("~/Documents/github/coupon-manager/upload-coupon.sh"))
+    load_env_file(os.path.expanduser("~/Documents/github/coupon-manager/process-coupons.sh"))
     load_env_file(os.path.expanduser("~/repos/lecturenote/.env"))
     
     openai_key = get_openai_key()
     supabase_url, anon_key, svc_key = get_supabase_keys()
+
+    if not anon_key and not svc_key:
+        # index.html에서 anon 키 추출 시도
+        try:
+            import re as _re
+            html = (open(os.path.expanduser("~/Documents/github/coupon-manager/index.html")).read())
+            m = _re.search(r"SUPABASE_ANON_KEY\s*=\s*'([^']+)'", html)
+            if m and len(m.group(1)) >= 20:
+                os.environ["SUPABASE_ANON"] = m.group(1)
+                supabase_url, anon_key, svc_key = get_supabase_keys()
+        except Exception:
+            pass
 
     if not openai_key or len(openai_key) < 20:
         print("  [오류] OpenAI API 키를 찾을 수 없습니다 (~/repos/lecturenote/.env)")
@@ -345,15 +385,22 @@ def main():
     print("\n[3/5] 새 이미지 선별...")
     state = load_state()
     processed_ids = set(state.get("processed", []))
-
-    new_files = [f for f in image_files if f["id"] not in processed_ids]
+    new_files = [f for f in image_files if f.get("id") not in processed_ids]
     print(f"  신규: {len(new_files)}개 (이미 처리: {len(image_files) - len(new_files)}개)")
+    print(f"  누적 처리 완료: {len(processed_ids)}개")
 
     if not new_files:
-        print("  처리할 새 이미지가 없습니다.")
+        print("\n✅ 새로 처리할 이미지가 없습니다.")
         return
 
-    # 각 파일 처리
+    if not (svc_key and len(svc_key) >= 20) and not (anon_key and len(anon_key) >= 20):
+        print("\n[오류] Supabase 저장용 키가 없습니다")
+        print("  service_role 키 또는 anon 키가 필요합니다.")
+        print("  확인 위치: ~/Documents/github/coupon-manager/upload-coupon.sh")
+        print("              ~/Documents/github/coupon-manager/index.html (anon)")
+        sys.exit(1)
+
+    # 4. 각 이미지 처리
     for idx, file_info in enumerate(new_files, 1):
         file_id = file_info["id"]
         filename = file_info["name"]
@@ -390,7 +437,7 @@ def main():
             continue
 
         # 6. Supabase Storage에 이미지 업로드
-        image_url = upload_to_storage(local_path, filename, svc_key)
+        image_url = upload_to_storage(local_path, filename, svc_key=svc_key, anon_key=anon_key)
         if not image_url:
             print(f"  [경고] 이미지 업로드 실패, DB에는 경로 없이 저장")
             image_url = ""
@@ -410,7 +457,7 @@ def main():
             "notes": info.get("notes", "").strip()
         }
 
-        result = insert_coupon(coupon_record, svc_key)
+        result = insert_coupon(coupon_record, svc_key=svc_key, anon_key=anon_key)
         if result:
             print(f"  ✅ 쿠폰 저장 완료! (ID: {result[0]['id'] if isinstance(result, list) else 'ok'})")
         else:
